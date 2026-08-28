@@ -18,13 +18,11 @@ export function HeroLayoutEditor({
   slide,
   customFontReady,
   onChange,
-  onHeroChange,
 }: {
   hero: HeroConfig;
   slide: HeroSlide;
   customFontReady: boolean;
   onChange: (slide: HeroSlide) => void;
-  onHeroChange: (patch: Partial<HeroConfig>) => void;
 }) {
   const [selectedId, setSelectedId] = useState(slide.layers[0]?.id ?? "");
   const dragRef = useRef<{
@@ -105,13 +103,13 @@ export function HeroLayoutEditor({
             onPointerUp={stopPointer}
             onPointerCancel={stopPointer}
           >
-            {layer.kind === "identity" && <InlineEditable tag="strong" value={hero.name} ariaLabel="姓名" onCommit={(name) => onHeroChange({ name })} />}
-            {layer.kind === "statement" && <InlineEditable tag="span" value={hero.statement} ariaLabel="个人定位" onCommit={(statement) => onHeroChange({ statement })} />}
+            {layer.kind === "identity" && <InlineEditable tag="strong" value={slide.content.name} ariaLabel="这张首图的姓名或主标题" onCommit={(name) => onChange({ ...slide, content: { ...slide.content, name } })} />}
+            {layer.kind === "statement" && <InlineEditable tag="span" value={slide.content.statement} ariaLabel="这张首图的个人定位" onCommit={(statement) => onChange({ ...slide, content: { ...slide.content, statement } })} />}
             {layer.kind === "facts" && <small>
-              <InlineEditable value={hero.role} ariaLabel="职业标题" onCommit={(role) => onHeroChange({ role })} /><br />
-              <InlineEditable value={hero.targetRole} ariaLabel="求职方向" onCommit={(targetRole) => onHeroChange({ targetRole })} /><br />
-              <InlineEditable value={hero.email} ariaLabel="邮箱" onCommit={(email) => onHeroChange({ email })} />
-              {hero.phone ? <><br /><InlineEditable value={hero.phone} ariaLabel="电话" onCommit={(phone) => onHeroChange({ phone })} /></> : null}
+              <InlineEditable value={slide.content.role} ariaLabel="这张首图的职业标题" onCommit={(role) => onChange({ ...slide, content: { ...slide.content, role } })} /><br />
+              <InlineEditable value={slide.content.targetRole} ariaLabel="这张首图的求职方向" onCommit={(targetRole) => onChange({ ...slide, content: { ...slide.content, targetRole } })} /><br />
+              <span>{hero.email}</span>
+              {hero.phone ? <><br /><span>{hero.phone}</span></> : null}
             </small>}
             <i
               className={styles.resizeHandle}

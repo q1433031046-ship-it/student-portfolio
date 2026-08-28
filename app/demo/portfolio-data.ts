@@ -23,6 +23,12 @@ export type HeroConfig = {
     contentMode: "image-only" | "system" | "free";
     effect: HeroEffect;
     animationEnabled: boolean;
+    content: {
+      name: string;
+      role: string;
+      targetRole: string;
+      statement: string;
+    };
     layers: Array<{
       id: string;
       kind: "identity" | "statement" | "facts";
@@ -120,6 +126,12 @@ export const portfolioDemo: PortfolioDemoConfig = {
         contentMode: "system",
         effect: "halo",
         animationEnabled: true,
+        content: {
+          name: "林予安",
+          role: "AI 影像创作者",
+          targetRole: "视觉设计 / AIGC 导演",
+          statement: "把想象变成有节奏、有情绪，也能被记住的画面。",
+        },
         media: { id: "hero-media", label: "个人首幅", alt: "林予安个人作品集首幅画面", visualKey: "frame" },
         layers: [
           { id: "identity", kind: "identity", x: 3, y: 68, width: 40, scale: 1, align: "left", zIndex: 2, visible: true },
@@ -132,6 +144,12 @@ export const portfolioDemo: PortfolioDemoConfig = {
         contentMode: "image-only",
         effect: "signal",
         animationEnabled: false,
+        content: {
+          name: "林予安",
+          role: "AI 影像创作者",
+          targetRole: "视觉设计 / AIGC 导演",
+          statement: "把想象变成有节奏、有情绪，也能被记住的画面。",
+        },
         media: { id: "hero-media-2", label: "个人首幅 02", alt: "林予安个人作品集第二张首幅画面", visualKey: "portrait" },
         layers: [
           { id: "identity", kind: "identity", x: 3, y: 68, width: 40, scale: 1, align: "left", zIndex: 2, visible: true },

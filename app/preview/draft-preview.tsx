@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PortfolioExperience } from "../portfolio/portfolio-experience";
-import { validatePortfolioDocument, type PortfolioDocument } from "../portfolio/model";
+import { mediaAssetsInDocument, validatePortfolioDocument, type PortfolioDocument } from "../portfolio/model";
 
 export function DraftPreview() {
   const [portfolio, setPortfolio] = useState<PortfolioDocument | null>(null);
@@ -16,6 +16,9 @@ export function DraftPreview() {
         if (!response.ok || !isRecord(body)) throw new Error("草稿暂时无法读取");
         const validation = validatePortfolioDocument(body.portfolio);
         if (!validation.ok) throw new Error("草稿内容需要先修正");
+        for (const asset of mediaAssetsInDocument(validation.value)) {
+          if (asset.key) asset.src = `/api/media/${asset.key}`;
+        }
         setPortfolio(validation.value);
       })
       .catch((reason) => {

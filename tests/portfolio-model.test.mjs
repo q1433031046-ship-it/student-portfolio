@@ -146,6 +146,27 @@ test("accepts an extensible portfolio document", () => {
   assert.equal(result.value.settings.contact.titleStyle.fontFamily, "system");
   assert.equal(result.value.projects[0].coverPresentation.overlayMode, "hover");
   assert.equal(result.value.themes.some((theme) => theme.id === "white"), true);
+  assert.deepEqual(result.value.hero.slides[0].content, {
+    name: result.value.hero.name,
+    role: result.value.hero.role,
+    targetRole: result.value.hero.targetRole,
+    statement: result.value.hero.statement,
+  });
+});
+
+test("keeps each hero slide's displayed copy independent from the fixed profile", () => {
+  const value = documentFixture();
+  value.hero.slides[0].content = {
+    name: "第一幕",
+    role: "视觉叙事",
+    targetRole: "导演方向",
+    statement: "这段文字只属于第一张首图。",
+  };
+  const result = validatePortfolioDocument(value);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.hero.name, "林予安");
+  assert.equal(result.value.hero.slides[0].content.name, "第一幕");
+  assert.equal(result.value.hero.slides[0].content.statement, "这段文字只属于第一张首图。");
 });
 
 test("carries the published cover overlay setting into each existing project", () => {

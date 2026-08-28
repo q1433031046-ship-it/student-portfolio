@@ -32,12 +32,16 @@ export function AccessManager({ access, onChange, setMessage }: { access: Access
   const [busy, setBusy] = useState(false);
   const usableCount = access.passes.filter((pass) => pass.status === "active").length;
 
-  async function updatePolicy() {
-    if (!access.restrictionEnabled && usableCount === 0) {
+  async function updatePolicy(restrictionEnabled: boolean) {
+    if (restrictionEnabled === access.restrictionEnabled) return;
+    if (restrictionEnabled && usableCount === 0) {
       setMessage("请先创建至少一张当前可用的二维码，再开启限制访问");
       return;
     }
-    await mutate({ method: "PATCH", body: { restrictionEnabled: !access.restrictionEnabled } }, !access.restrictionEnabled ? "二维码限制访问已开启" : "二维码限制访问已关闭");
+    await mutate(
+      { method: "PATCH", body: { restrictionEnabled } },
+      restrictionEnabled ? "已切换为二维码限制访问" : "已切换为公开访问",
+    );
   }
 
   async function createPass() {
@@ -83,11 +87,20 @@ export function AccessManager({ access, onChange, setMessage }: { access: Access
           <h2 id="access-manager-title">二维码访问接口</h2>
           <p>二维码可以单独使用；只有开启限制后，普通链接才会被拦截。</p>
         </div>
-        <button className={styles.policySwitch} type="button" role="switch" aria-checked={access.restrictionEnabled} data-on={access.restrictionEnabled} disabled={busy} onClick={() => void updatePolicy()}>
-          <i aria-hidden="true" />
-          <span>{access.restrictionEnabled ? "限制访问已开启" : "公开访问"}</span>
-        </button>
+        <div className={styles.accessModePicker} role="group" aria-label="访客访问方式">
+          <button type="button" aria-pressed={!access.restrictionEnabled} data-active={!access.restrictionEnabled} disabled={busy} onClick={() => void updatePolicy(false)}>
+            <strong>公开访问</strong><small>普通链接可直接打开</small>
+          </button>
+          <button type="button" aria-pressed={access.restrictionEnabled} data-active={access.restrictionEnabled} disabled={busy} onClick={() => void updatePolicy(true)}>
+            <strong>二维码限制</strong><small>仅持有效访问码可进入</small>
+          </button>
+        </div>
       </div>
+
+      <p className={styles.accessModeStatus} data-restricted={access.restrictionEnabled} role="status">
+        <strong>当前：{access.restrictionEnabled ? "二维码限制访问" : "公开访问"}</strong>
+        <span>{access.restrictionEnabled ? "普通链接会被拦截；管理员和持有效二维码的访客可以进入。" : "任何拿到普通链接的人都能打开；二维码链接仍可单独使用。"}</span>
+      </p>
 
       <div className={styles.accessFlow}>
         <span><b>普通链接</b>{access.restrictionEnabled ? "需要有效访问会话" : "直接打开"}</span>

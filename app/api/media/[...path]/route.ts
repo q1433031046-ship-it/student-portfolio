@@ -3,6 +3,7 @@ import { getMediaSigningKey, verifyPlaybackGrant } from "../../_lib/media-securi
 import { getPortfolioDb, getPublishedPortfolio } from "../../_lib/portfolio-store";
 import { getBucket, getMediaKv, kvChunkKey } from "../../_lib/storage";
 import { checkPortfolioAccess } from "../../_lib/portfolio-access";
+import { requirePortfolioManager } from "../../_lib/site-ownership";
 
 type MediaRow = {
   id: string;
@@ -34,10 +35,10 @@ async function serveMedia(
   try {
     const access = await checkPortfolioAccess(request);
     if (!access.allowed) return new Response("Access pass required", { status: 403, headers: { "Cache-Control": "no-store" } });
-    const published = await findPortfolioMedia(key);
-    if (!published) return new Response("Not found", { status: 404 });
+    const media = await findPortfolioMedia(request, key);
+    if (!media) return new Response("Not found", { status: 404 });
 
-    if (published.kind === "video") {
+    if (media.kind === "video" && !media.isDraftPreview) {
       const url = new URL(request.url);
       const expiresAt = Number(url.searchParams.get("exp"));
       const signature = url.searchParams.get("sig") ?? "";
@@ -46,10 +47,11 @@ async function serveMedia(
       }
     }
 
-    if (published.record.storage_backend === "kv") {
-      return serveKvMedia(request, published.record, published.kind, access.restricted, headOnly);
+    const restricted = access.restricted || media.isDraftPreview;
+    if (media.record.storage_backend === "kv") {
+      return serveKvMedia(request, media.record, media.kind, restricted, headOnly);
     }
-    return serveR2Media(request, published.record, published.kind, access.restricted, headOnly);
+    return serveR2Media(request, media.record, media.kind, restricted, headOnly);
   } catch (error) {
     console.error(JSON.stringify({ message: "media read failed", error: errorMessage(error), key }));
     return new Response("Media unavailable", { status: 503 });
@@ -137,17 +139,30 @@ function mediaHeaders(record: MediaRow, kind: string, restricted: boolean) {
   });
 }
 
-async function findPortfolioMedia(key: string) {
+async function findPortfolioMedia(request: Request, key: string) {
   const { document } = await getPublishedPortfolio();
-  if (!document) return null;
-  const published = findPublishedMedia(document, key);
-  if (!published) return null;
+  const published = document ? findPublishedMedia(document, key) : null;
+  let isDraftPreview = false;
+  if (!published) {
+    const manager = await requirePortfolioManager(request);
+    if (manager instanceof Response) return null;
+    isDraftPreview = true;
+  }
   const record = await getPortfolioDb()
     .prepare(`SELECT id, object_key, content_type, byte_size, storage_backend, chunk_size, chunk_count
       FROM portfolio_media WHERE object_key = ? AND status = 'uploaded' LIMIT 1`)
     .bind(key)
     .first<MediaRow>();
-  return record ? { kind: published.asset.kind, record } : null;
+  if (!record) return null;
+  const kind = published?.asset.kind ?? mediaKind(record.content_type);
+  return kind ? { kind, record, isDraftPreview } : null;
+}
+
+function mediaKind(contentType: string): "image" | "video" | "font" | null {
+  if (contentType.startsWith("image/")) return "image";
+  if (contentType === "video/mp4") return "video";
+  if (contentType.startsWith("font/") || contentType.startsWith("application/font-") || contentType.startsWith("application/x-font-")) return "font";
+  return null;
 }
 
 function parseRange(value: string | null, size: number): { start: number; end: number } | "invalid" | null {

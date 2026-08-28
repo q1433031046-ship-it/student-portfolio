@@ -99,14 +99,16 @@
 .accessHeading > div > span { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .16em; }
 .accessHeading h2 { margin: 10px 0 8px; font-size: clamp(27px, 3.5vw, 44px); letter-spacing: -.055em; }
 .accessHeading p { max-width: 620px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
-.policySwitch { min-width: 190px; min-height: 48px; padding: 6px 13px 6px 7px; display: flex; align-items: center; gap: 11px; border: 1px solid var(--line); border-radius: 999px; background: #f5f4ef; color: var(--muted); cursor: pointer; }
-.policySwitch i { position: relative; width: 44px; height: 28px; flex: 0 0 auto; border-radius: 999px; background: #d8d8d3; transition: background-color 180ms ease; }
-.policySwitch i::after { content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 7px #0003; transition: transform 180ms ease; }
-.policySwitch[data-on="true"] { border-color: #a9b8ff; color: #1b349c; background: #f1f4ff; }
-.policySwitch[data-on="true"] i { background: var(--accent); }
-.policySwitch[data-on="true"] i::after { transform: translateX(16px); }
-.policySwitch span { font-size: 11px; font-weight: 750; white-space: nowrap; }
-.policySwitch:disabled { cursor: wait; opacity: .6; }
+.accessModePicker { min-width: min(420px, 44vw); padding: 4px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; border: 1px solid var(--line); border-radius: 10px; background: #efefeb; }
+.accessModePicker button { min-height: 56px; padding: 9px 12px; display: grid; align-content: center; gap: 3px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); text-align: left; cursor: pointer; }
+.accessModePicker button[data-active="true"] { border-color: #a9b8ff; background: white; color: #1b349c; box-shadow: 0 2px 8px #1a2f8212; }
+.accessModePicker strong { font-size: 11px; }
+.accessModePicker small { color: inherit; font-size: 8px; line-height: 1.4; opacity: .78; }
+.accessModePicker button:disabled { cursor: wait; opacity: .6; }
+.accessModeStatus { margin: 18px 0 0; padding: 12px 14px; display: flex; align-items: baseline; gap: 10px; border: 1px solid #cfe4d5; border-radius: 8px; background: #f4faf6; color: #326747; }
+.accessModeStatus[data-restricted="true"] { border-color: #cbd4ff; background: #f2f4ff; color: #253b9e; }
+.accessModeStatus strong { flex: 0 0 auto; font-size: 11px; }
+.accessModeStatus span { font-size: 10px; line-height: 1.55; }
 .accessFlow { margin: 26px 0 18px; display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 10px; }
 .accessFlow > span { min-height: 76px; padding: 15px; display: grid; align-content: center; gap: 5px; border: 1px solid #e0e0dc; border-radius: 9px; background: #fafaf8; color: var(--muted); font-size: 10px; }
 .accessFlow b { color: var(--ink); font-size: 12px; }
@@ -139,6 +141,7 @@
 .accessPassActions button:disabled { cursor: default; opacity: .4; }
 
 .formSection { margin-bottom: 54px; }
+.formSectionNote { max-width: 760px; margin: -12px 0 20px; color: var(--muted); font-size: 10px; line-height: 1.65; }
 .sectionTitle { margin: 38px 0 24px; display: flex; align-items: baseline; gap: 15px; }
 .sectionTitle span { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .13em; }
 .sectionTitle h2 { margin: 0; font-size: 22px; letter-spacing: -.04em; }
@@ -170,6 +173,10 @@
 .heroSlideCard > header > div:last-child { display: flex; gap: 5px; }
 .heroSlideCard > header button { min-height: 34px; padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; background: white; cursor: pointer; }
 .heroSlideCard > header button:disabled { opacity: .35; cursor: default; }
+.heroSlideContentFields { margin-top: 18px; padding: 16px; display: grid; gap: 14px; border: 1px solid #dfe3f4; border-radius: 9px; background: #f7f8fe; }
+.heroSlideContentFields > div:first-child { display: grid; gap: 4px; }
+.heroSlideContentFields > div:first-child strong { color: var(--ink); font-size: 12px; }
+.heroSlideContentFields > div:first-child small { color: var(--muted); font-size: 9px; line-height: 1.5; }
 .layoutEditor { margin-top: 18px; }
 .layoutCanvas { position: relative; overflow: hidden; aspect-ratio: 16 / 9; border: 1px solid var(--line); background: #14161c; color: white; touch-action: none; }
 .layoutCanvas > img { width: 100%; height: 100%; object-fit: contain; }
@@ -397,7 +404,7 @@
   .contactEditorGrid { grid-template-columns: 1fr; }
   .contactAdminPreview { position: static; min-height: 440px; }
   .accessHeading { align-items: stretch; flex-direction: column; }
-  .policySwitch { align-self: flex-start; }
+  .accessModePicker { width: 100%; min-width: 0; }
   .accessCreate { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .accessCreate button { align-self: stretch; }
   .accessPassCard { grid-template-columns: 148px minmax(0, 1fr); }
@@ -440,7 +447,8 @@
   .storageStats > span:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .accessManager { padding: 18px; border-radius: 10px; }
   .accessHeading { gap: 18px; }
-  .policySwitch { width: 100%; justify-content: flex-start; }
+  .accessModePicker { width: 100%; }
+  .accessModeStatus { align-items: flex-start; flex-direction: column; gap: 4px; }
   .accessFlow { grid-template-columns: 1fr; }
   .accessFlow > i { display: none; }
   .accessFlow > span { min-height: 58px; }

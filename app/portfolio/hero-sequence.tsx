@@ -105,12 +105,12 @@ function HeroLayers({ hero, slide, yearRange }: { hero: HeroConfig; slide: HeroS
           data-kind={layer.kind}
           style={layerStyle(layer)}
         >
-          {layer.kind === "identity" && <><p>PORTFOLIO · {yearRange}</p><h1>{hero.name}</h1></>}
-          {layer.kind === "statement" && <p>{hero.statement}</p>}
+          {layer.kind === "identity" && <><p>PORTFOLIO · {yearRange}</p><h1>{slide.content.name}</h1></>}
+          {layer.kind === "statement" && <p>{slide.content.statement}</p>}
           {layer.kind === "facts" && (
             <dl>
-              <div><dt>身份</dt><dd>{hero.role}</dd></div>
-              <div><dt>方向</dt><dd>{hero.targetRole}</dd></div>
+              <div><dt>身份</dt><dd>{slide.content.role}</dd></div>
+              <div><dt>方向</dt><dd>{slide.content.targetRole}</dd></div>
               <div><dt>邮箱</dt><dd><a href={`mailto:${hero.email}`}>{hero.email}</a></dd></div>
               {hero.phone && <div><dt>电话</dt><dd><a href={`tel:${phoneHref(hero.phone)}`}>{hero.phone}</a></dd></div>}
             </dl>

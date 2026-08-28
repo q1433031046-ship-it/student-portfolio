@@ -30,6 +30,7 @@ export function createDefaultPortfolioDocument(): PortfolioDocument {
       ...portfolioDemo.hero,
       slides: portfolioDemo.hero.slides.map((slide) => ({
         ...slide,
+        content: { ...slide.content },
         media: media(slide.media, "image"),
         layers: slide.layers.map((layer) => ({ ...layer, color: "system", fontFamily: "system" })),
       })),

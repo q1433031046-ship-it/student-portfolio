@@ -62,12 +62,20 @@ export type HeroLayer = {
   fontFamily: "system" | "custom";
 };
 
+export type HeroSlideContent = {
+  name: string;
+  role: string;
+  targetRole: string;
+  statement: string;
+};
+
 export type HeroSlide = {
   id: string;
   media: MediaAsset;
   contentMode: HeroContentMode;
   effect: HeroEffect;
   animationEnabled: boolean;
+  content: HeroSlideContent;
   layers: HeroLayer[];
 };
 
@@ -188,6 +196,15 @@ export function createDefaultHeroLayers(): HeroLayer[] {
     { id: "statement", kind: "statement", x: 3, y: 87, width: 36, scale: 1, align: "left", zIndex: 2, visible: true, color: "system", fontFamily: "system" },
     { id: "facts", kind: "facts", x: 72, y: 72, width: 25, scale: 1, align: "left", zIndex: 3, visible: true, color: "system", fontFamily: "system" },
   ];
+}
+
+export function createHeroSlideContent(hero: Pick<HeroConfig, "name" | "role" | "targetRole" | "statement">): HeroSlideContent {
+  return {
+    name: hero.name,
+    role: hero.role,
+    targetRole: hero.targetRole,
+    statement: hero.statement,
+  };
 }
 
 export function createDefaultMediaPosition(): MediaPosition {
@@ -479,7 +496,11 @@ function normalizeSchemaFourPresentation(candidate: Record<string, unknown>): Re
     ? {
         ...candidate.hero,
         slides: candidate.hero.slides.map((slide) => isRecord(slide)
-          ? { ...slide, media: normalizeAsset(slide.media) }
+          ? {
+              ...slide,
+              media: normalizeAsset(slide.media),
+              content: normalizeHeroSlideContent(slide.content, candidate.hero as Record<string, unknown>),
+            }
           : slide),
       }
     : candidate.hero;
@@ -529,6 +550,16 @@ function normalizeSchemaFourPresentation(candidate: Record<string, unknown>): Re
       : [...candidate.themes, { id: "white", label: "纯白", swatches: ["#ffffff", "#111217", "#3258ff"] }]
     : candidate.themes;
   return { ...candidate, hero, categories, projects, settings, themes };
+}
+
+function normalizeHeroSlideContent(value: unknown, hero: Record<string, unknown>): HeroSlideContent {
+  const content = isRecord(value) ? value : {};
+  return {
+    name: typeof content.name === "string" ? content.name : typeof hero.name === "string" ? hero.name : "",
+    role: typeof content.role === "string" ? content.role : typeof hero.role === "string" ? hero.role : "",
+    targetRole: typeof content.targetRole === "string" ? content.targetRole : typeof hero.targetRole === "string" ? hero.targetRole : "",
+    statement: typeof content.statement === "string" ? content.statement : typeof hero.statement === "string" ? hero.statement : "",
+  };
 }
 
 export function mediaAssetsInDocument(document: PortfolioDocument): MediaAsset[] {
@@ -633,6 +664,13 @@ function validateHeroSlide(value: unknown, index: number, ids: Set<string>, medi
   if (!isStringIn(slide.contentMode, HERO_CONTENT_MODES)) errors.push(`${path}.contentMode 无效`);
   if (!isStringIn(slide.effect, HERO_EFFECTS)) errors.push(`${path}.effect 无效`);
   if (typeof slide.animationEnabled !== "boolean") errors.push(`${path}.animationEnabled 必须为布尔值`);
+  const content = expectRecord(slide.content, `${path}.content`, errors);
+  if (content) {
+    validateText(content.name, `${path}.content.name`, 1, 60, errors);
+    validateText(content.role, `${path}.content.role`, 1, 80, errors);
+    validateText(content.targetRole, `${path}.content.targetRole`, 1, 120, errors);
+    validateText(content.statement, `${path}.content.statement`, 1, 260, errors);
+  }
   const layers = expectArray(slide.layers, `${path}.layers`, errors, 3, 3);
   const layerIds = new Set<string>();
   layers?.forEach((layer, layerIndex) => validateHeroLayer(layer, `${path}.layers[${layerIndex}]`, layerIds, errors));

@@ -110,6 +110,72 @@ test("recovers a password once, rotates the recovery code and revokes old sessio
   resetEnv();
 });
 
+test("password administrators can preview a newly uploaded draft image before publishing", async () => {
+  const database = await createDatabase();
+  env.DB = d1Adapter(database);
+  env.AUTH_PLATFORM = "password";
+  env.INITIAL_ADMIN_CODE = randomTestValue("D");
+  const setupRoute = await import("../app/api/admin/setup/route.ts");
+  const uploadRoute = await import("../app/api/admin/media/[projectId]/[slot]/route.ts");
+  const mediaRoute = await import("../app/api/media/[...path]/route.ts");
+  const setup = await setupRoute.POST(jsonRequest("https://portfolio.example/api/admin/setup", {
+    initialCode: env.INITIAL_ADMIN_CODE,
+    password: randomTestValue("P"),
+  }));
+  const cookie = setup.headers.get("set-cookie");
+  const bytes = new TextEncoder().encode("draft-image").buffer;
+  const stored = new Map();
+  env.MEDIA_KV = {
+    async put(key, value) {
+      stored.set(key, value instanceof ArrayBuffer ? value : await new Response(value).arrayBuffer());
+    },
+    async get(key) {
+      return stored.get(key) ?? null;
+    },
+    async delete(key) { stored.delete(key); },
+  };
+  const uploadUrl = "https://portfolio.example/api/admin/media/site/contact";
+  const initialized = await uploadRoute.POST(new Request(uploadUrl, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      assetId: "site-contact-image",
+      filename: "draft.jpg",
+      contentType: "image/jpeg",
+      byteSize: bytes.byteLength,
+      replacingKey: null,
+    }),
+  }), { params: Promise.resolve({ projectId: "site", slot: "contact" }) });
+  assert.equal(initialized.status, 201);
+  const upload = await initialized.json();
+  assert.equal(upload.mode, "chunked");
+
+  const chunk = await uploadRoute.PUT(new Request(`${uploadUrl}?uploadId=${encodeURIComponent(upload.uploadId)}&chunk=0`, {
+    method: "PUT",
+    headers: { Cookie: cookie, "Content-Type": "application/octet-stream", "Content-Length": String(bytes.byteLength) },
+    body: bytes,
+  }), { params: Promise.resolve({ projectId: "site", slot: "contact" }) });
+  assert.equal(chunk.status, 200);
+  const completed = await uploadRoute.POST(new Request(`${uploadUrl}?uploadId=${encodeURIComponent(upload.uploadId)}&complete=1`, {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: "{}",
+  }), { params: Promise.resolve({ projectId: "site", slot: "contact" }) });
+  assert.equal(completed.status, 201);
+  const asset = (await completed.json()).asset;
+  assert.match(asset.src, /^\/api\/media\/portfolio\/site\/contact-/u);
+  const objectKey = asset.key;
+  const url = `https://portfolio.example/api/media/${objectKey}`;
+  const context = { params: Promise.resolve({ path: objectKey.split("/") }) };
+  const anonymous = await mediaRoute.GET(new Request(url), context);
+  assert.equal(anonymous.status, 404);
+  const administrator = await mediaRoute.GET(new Request(url, { headers: { Cookie: cookie } }), context);
+  assert.equal(administrator.status, 200);
+  assert.equal(administrator.headers.get("cache-control"), "private, no-store");
+  assert.equal(await administrator.text(), "draft-image");
+  resetEnv();
+});
+
 test("admin UI exposes deployment-code setup, recovery and website-space status", async () => {
   const [adminClient, setupRoute, portfolioRoute, accessRoute, mediaRoute] = await Promise.all([
     readFile(new URL("../app/admin/admin-client.tsx", import.meta.url), "utf8"),
@@ -158,6 +224,7 @@ function randomTestValue(prefix) {
 
 function resetEnv() {
   delete env.DB;
+  delete env.MEDIA_KV;
   delete env.AUTH_PLATFORM;
   delete env.INITIAL_ADMIN_CODE;
 }

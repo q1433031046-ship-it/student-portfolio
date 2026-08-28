@@ -102,8 +102,13 @@ test("keeps draft preview separate from publishing and uses plain Chinese admin 
   assert.match(adminSource, /formatVideoDuration/);
   assert.match(adminSource, /悬浮窗常驻/);
   assert.match(adminSource, /作品名与分类/);
+  assert.match(adminSource, /个人固定资料/);
+  assert.match(adminSource, /这张首图显示的文字/);
+  assert.match(adminSource, /混合排版/);
   assert.match(accessSource, /二维码访问接口/);
-  assert.match(accessSource, /限制访问已开启/);
+  assert.match(accessSource, /当前：/);
+  assert.match(accessSource, /公开访问/);
+  assert.match(accessSource, /二维码限制/);
   assert.match(accessSource, /下载二维码/);
 });
 

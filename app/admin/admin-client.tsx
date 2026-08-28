@@ -12,7 +12,7 @@ import type {
   Project,
   ProjectBlock,
 } from "../portfolio/model";
-import { createDefaultCoverPresentation, createDefaultHeroLayers } from "../portfolio/model";
+import { createDefaultCoverPresentation, createDefaultHeroLayers, createHeroSlideContent } from "../portfolio/model";
 import { HeroLayoutEditor } from "./hero-layout-editor";
 import { MediaCropEditor } from "./media-crop-editor";
 import styles from "./admin.module.css";
@@ -500,6 +500,9 @@ function Overview({ data, portfolio, access, storage, setAccess, change, onNavig
     + (portfolio.settings.contact.image.key ? 1 : 0)
     + portfolio.categories.filter((category) => category.transition.mode === "image").length
     + portfolio.projects.reduce((total, project) => total + 2 + project.detailBlocks.reduce((count, block) => count + (block.type === "gallery" ? block.items.length : block.type === "text" ? 0 : 1), 0), 0);
+  function profileField(field: "name" | "role" | "targetRole" | "email" | "phone" | "statement" | "availability", value: string) {
+    change((document) => ({ ...document, hero: { ...document.hero, [field]: value } }));
+  }
   return (
     <>
       <ViewHeader eyebrow="01 / OVERVIEW" title={`你好，${portfolio.hero.name}`} detail="从网页名称开始，按前台顺序管理首图、作品和联系信息。" />
@@ -508,6 +511,19 @@ function Overview({ data, portfolio, access, storage, setAccess, change, onNavig
         <Field label="浏览器标签与站点名称" wide><input maxLength={80} value={portfolio.settings.siteTitle} onChange={(event) => change((document) => ({ ...document, settings: { ...document.settings, siteTitle: event.target.value } }))} /></Field>
       </div>
       <AccessManager access={access} onChange={setAccess} setMessage={setMessage} />
+      <div className={styles.formSection}>
+        <SectionTitle index="PROFILE" title="个人固定资料" />
+        <p className={styles.formSectionNote}>这里的资料用于页头、联系区、页脚、视频水印默认值和新建首图；已有首图上的文字请在对应首图内单独修改。</p>
+        <div className={styles.formGrid}>
+          <Field label="姓名"><input maxLength={60} value={portfolio.hero.name} onChange={(event) => profileField("name", event.target.value)} /></Field>
+          <Field label="职业标题"><input maxLength={80} value={portfolio.hero.role} onChange={(event) => profileField("role", event.target.value)} /></Field>
+          <Field label="求职方向"><input maxLength={120} value={portfolio.hero.targetRole} onChange={(event) => profileField("targetRole", event.target.value)} /></Field>
+          <Field label="联系邮箱"><input type="email" maxLength={160} value={portfolio.hero.email} onChange={(event) => profileField("email", event.target.value)} /></Field>
+          <Field label="电话号码"><input maxLength={30} value={portfolio.hero.phone} onChange={(event) => profileField("phone", event.target.value)} /></Field>
+          <Field label="状态短句"><input maxLength={100} value={portfolio.hero.availability} onChange={(event) => profileField("availability", event.target.value)} /></Field>
+          <Field label="新建首图默认定位" wide><textarea rows={3} maxLength={260} value={portfolio.hero.statement} onChange={(event) => profileField("statement", event.target.value)} /></Field>
+        </div>
+      </div>
       <div className={styles.metricGrid}>
         <Metric value={portfolio.projects.length} label="作品" />
         <Metric value={portfolio.categories.length} label="分类" />
@@ -547,9 +563,6 @@ function Overview({ data, portfolio, access, storage, setAccess, change, onNavig
 }
 
 function IdentityEditor({ portfolio, change, setMessage }: { portfolio: PortfolioDocument; change: (mutator: (document: PortfolioDocument) => PortfolioDocument) => void; setMessage: (message: string) => void }) {
-  function heroField(field: keyof PortfolioDocument["hero"], value: string) {
-    change((document) => ({ ...document, hero: { ...document.hero, [field]: value } }));
-  }
   function updateSlide(id: string, updater: (slide: HeroSlide) => HeroSlide) {
     change((document) => ({ ...document, hero: { ...document.hero, slides: document.hero.slides.map((slide) => slide.id === id ? updater(slide) : slide) } }));
   }
@@ -560,6 +573,7 @@ function IdentityEditor({ portfolio, change, setMessage }: { portfolio: Portfoli
       contentMode: "image-only",
       effect: "halo",
       animationEnabled: false,
+      content: createHeroSlideContent(portfolio.hero),
       layers: createDefaultHeroLayers(),
     };
     change((document) => ({ ...document, hero: { ...document.hero, slides: [...document.hero.slides, slide] } }));
@@ -569,6 +583,7 @@ function IdentityEditor({ portfolio, change, setMessage }: { portfolio: Portfoli
       ...slide,
       id: `hero-slide-${createClientId()}`,
       media: { ...slide.media, id: `hero-media-${createClientId()}`, key: undefined, src: undefined, label: "" },
+      content: { ...slide.content },
       layers: slide.layers.map((layer) => ({ ...layer })),
     };
     change((document) => ({ ...document, hero: { ...document.hero, slides: [...document.hero.slides, copy] } }));
@@ -585,7 +600,7 @@ function IdentityEditor({ portfolio, change, setMessage }: { portfolio: Portfoli
       <ViewHeader eyebrow="03 / IDENTITY" title="个人首图与页面基调" detail="图片裁切和文字排版共用同一块真实画布。" />
       <div className={styles.formSection}>
         <div className={styles.editorSectionHeader}>
-          <SectionTitle index="01" title="多张首图与自由排版" />
+          <SectionTitle index="01" title="首图、文字与排版" />
           <button type="button" onClick={addSlide}>＋ 增加首图</button>
         </div>
         <div className={styles.heroSlideList}>
@@ -602,27 +617,28 @@ function IdentityEditor({ portfolio, change, setMessage }: { portfolio: Portfoli
               </header>
               <MediaUpload projectId="site" slot="hero" title="首图图片" asset={slide.media} freeCrop setMessage={setMessage} onUploaded={(asset) => updateSlide(slide.id, (current) => ({ ...current, media: asset }))} onCropChange={(crop, sourceAspectRatio) => updateSlide(slide.id, (current) => ({ ...current, media: { ...current.media, crop, sourceAspectRatio } }))} />
               <div className={styles.inlineChoices}>
-                <Field label="显示模式"><select value={slide.contentMode} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, contentMode: event.target.value as HeroSlide["contentMode"] }))}><option value="image-only">纯图片</option><option value="system">系统排版</option><option value="free">自由排版</option></select></Field>
+                <Field label="显示模式"><select value={slide.contentMode} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, contentMode: event.target.value as HeroSlide["contentMode"] }))}><option value="image-only">纯图片</option><option value="system">系统排版</option><option value="free">混合排版</option></select></Field>
                 <Field label="首图效果"><select value={slide.effect} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, effect: event.target.value as HeroSlide["effect"] }))}><option value="halo">柔光</option><option value="signal">信号</option></select></Field>
                 <Field label="系统动画"><select value={slide.animationEnabled ? "on" : "off"} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, animationEnabled: event.target.value === "on" }))}><option value="on">开启</option><option value="off">关闭</option></select></Field>
               </div>
-              {slide.contentMode !== "image-only" && <HeroLayoutEditor hero={portfolio.hero} slide={slide} customFontReady={Boolean(portfolio.settings.customFont.key)} onChange={(next) => updateSlide(slide.id, () => next)} onHeroChange={(patch) => change((document) => ({ ...document, hero: { ...document.hero, ...patch } }))} />}
+              {slide.contentMode !== "image-only" && <>
+                <div className={styles.heroSlideContentFields}>
+                  <div><strong>这张首图显示的文字</strong><small>只影响当前首图；切换为纯图片后这些文字会保留但不显示。</small></div>
+                  <div className={styles.formGrid}>
+                    <Field label="姓名或主标题"><input maxLength={60} value={slide.content.name} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, content: { ...current.content, name: event.target.value } }))} /></Field>
+                    <Field label="职业标题"><input maxLength={80} value={slide.content.role} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, content: { ...current.content, role: event.target.value } }))} /></Field>
+                    <Field label="求职方向"><input maxLength={120} value={slide.content.targetRole} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, content: { ...current.content, targetRole: event.target.value } }))} /></Field>
+                    <Field label="个人定位" wide><textarea rows={3} maxLength={260} value={slide.content.statement} onChange={(event) => updateSlide(slide.id, (current) => ({ ...current, content: { ...current.content, statement: event.target.value } }))} /></Field>
+                  </div>
+                </div>
+                <HeroLayoutEditor hero={portfolio.hero} slide={slide} customFontReady={Boolean(portfolio.settings.customFont.key)} onChange={(next) => updateSlide(slide.id, () => next)} />
+              </>}
             </article>
           ))}
         </div>
       </div>
       <div className={styles.formSection}>
-        <SectionTitle index="02" title="首图文字" />
-        <div className={styles.formGrid}>
-          <Field label="姓名"><input value={portfolio.hero.name} onChange={(event) => heroField("name", event.target.value)} /></Field>
-          <Field label="职业标题"><input value={portfolio.hero.role} onChange={(event) => heroField("role", event.target.value)} /></Field>
-          <Field label="求职方向"><input value={portfolio.hero.targetRole} onChange={(event) => heroField("targetRole", event.target.value)} /></Field>
-          <Field label="个人定位" wide><textarea rows={4} value={portfolio.hero.statement} onChange={(event) => heroField("statement", event.target.value)} /></Field>
-          <Field label="状态短句" wide><input value={portfolio.hero.availability} onChange={(event) => heroField("availability", event.target.value)} /></Field>
-        </div>
-      </div>
-      <div className={styles.formSection}>
-        <SectionTitle index="03" title="字体与四套页面主题" />
+        <SectionTitle index="02" title="字体与四套页面主题" />
         <div className={styles.choiceGrid}>
           {portfolio.themes.map((theme) => (
             <button key={theme.id} type="button" data-selected={portfolio.settings.activeTheme === theme.id} onClick={() => change((document) => ({ ...document, settings: { ...document.settings, activeTheme: theme.id } }))}>
@@ -637,7 +653,7 @@ function IdentityEditor({ portfolio, change, setMessage }: { portfolio: Portfoli
         </div>
       </div>
       <div className={styles.formSection}>
-        <SectionTitle index="04" title="作品区大标题" />
+        <SectionTitle index="03" title="作品区大标题" />
         <div className={styles.formGrid}>
           <Field label="第一行"><input maxLength={100} value={portfolio.settings.workHeading.lead} onChange={(event) => change((document) => ({ ...document, settings: { ...document.settings, workHeading: { ...document.settings.workHeading, lead: event.target.value } } }))} /></Field>
           <Field label="第二行（主题弱化色）"><input maxLength={100} value={portfolio.settings.workHeading.accent} onChange={(event) => change((document) => ({ ...document, settings: { ...document.settings, workHeading: { ...document.settings.workHeading, accent: event.target.value } } }))} /></Field>

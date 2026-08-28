@@ -205,6 +205,71 @@ test("streams chunked MP4 ranges and serves ten complete viewers", async () => {
   delete env.INITIAL_ADMIN_CODE;
 });
 
+test("keeps draft media private while allowing the signed-in administrator to preview it", async () => {
+  const objectKey = "portfolio/site/contact-draft.jpg";
+  const draft = createDefaultPortfolioDocument();
+  draft.settings.contact.image = {
+    ...draft.settings.contact.image,
+    key: objectKey,
+    src: `/api/media/${objectKey}`,
+  };
+  const published = createDefaultPortfolioDocument();
+  const imageBytes = new TextEncoder().encode("draft-image").buffer;
+  env.AUTH_PLATFORM = "sites";
+  env.MEDIA_KV = {
+    async get(key) {
+      return key === `${objectKey}::chunk:0000` ? imageBytes : null;
+    },
+  };
+  env.DB = mediaD1({
+    ownership: {
+      id: "default",
+      owner_email: "owner@example.com",
+      auth_subject: null,
+      auth_provider: "sites",
+      bound_at: "2026-08-28T00:00:00.000Z",
+      onboarding_email_sent_at: "2026-08-28T00:00:00.000Z",
+      onboarding_email_id: "test",
+    },
+    portfolio: {
+      id: "default",
+      owner_email: "owner@example.com",
+      revision: 2,
+      draft_json: JSON.stringify(draft),
+      published_json: JSON.stringify(published),
+      updated_at: "2026-08-28T00:00:00.000Z",
+      published_at: "2026-08-28T00:00:00.000Z",
+    },
+    media: {
+      id: "draft-media",
+      object_key: objectKey,
+      content_type: "image/jpeg",
+      byte_size: imageBytes.byteLength,
+      storage_backend: "kv",
+      chunk_size: imageBytes.byteLength,
+      chunk_count: 1,
+    },
+  });
+  const url = `https://portfolio.example/api/media/${objectKey}`;
+  const anonymous = await mediaRoute.GET(new Request(url), {
+    params: Promise.resolve({ path: objectKey.split("/") }),
+  });
+  assert.equal(anonymous.status, 404);
+
+  const administrator = await mediaRoute.GET(new Request(url, {
+    headers: { "oai-authenticated-user-email": "owner@example.com" },
+  }), {
+    params: Promise.resolve({ path: objectKey.split("/") }),
+  });
+  assert.equal(administrator.status, 200);
+  assert.equal(administrator.headers.get("cache-control"), "private, no-store");
+  assert.equal(await administrator.text(), "draft-image");
+
+  delete env.DB;
+  delete env.MEDIA_KV;
+  delete env.AUTH_PLATFORM;
+});
+
 function mediaD1(rows) {
   return {
     prepare(sql) {
@@ -212,6 +277,7 @@ function mediaD1(rows) {
         bind() { return this; },
         async first() {
           if (sql.includes("portfolio_access_settings")) return null;
+          if (sql.includes("FROM site_ownership")) return rows.ownership ?? null;
           if (sql.includes("FROM portfolio_documents")) return rows.portfolio;
           if (sql.includes("FROM portfolio_media")) return rows.media;
           throw new Error(`Unexpected media query: ${sql}`);
